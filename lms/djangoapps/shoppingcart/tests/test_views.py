@@ -918,7 +918,12 @@ class ShoppingCartViewsTests(ModuleStoreTestCase):
         """Mocks calls to EcommerceAPI.get_order. """
         patch = None
 
-        ORDER = copy.deepcopy(EcommerceApiTestMixin.ECOMMERCE_API_SUCCESSFUL_BODY)
+        ORDER = {
+            'status': OrderStatus.COMPLETE,
+            'number': EcommerceApiTestMixin.ORDER_NUMBER,
+            'payment_processor': 'cybersource',
+            'payment_parameters': {'orderNumber': EcommerceApiTestMixin.ORDER_NUMBER},
+        }
         ORDER['total_excl_tax'] = 40.0
         ORDER['currency'] = 'USD'
         ORDER['sources'] = [{'transactions': [

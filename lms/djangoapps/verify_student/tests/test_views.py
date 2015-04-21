@@ -52,6 +52,8 @@ def mock_render_to_response(*args, **kwargs):
 
 render_mock = Mock(side_effect=mock_render_to_response)
 
+PAYMENT_DATA_KEYS = {'payment_processor_name', 'payment_page_url', 'payment_form_data'}
+
 
 class StartView(TestCase):
     def start_url(self, course_id=""):
@@ -871,6 +873,14 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         url = reverse('verify_student_create_order')
         return self.client.post(url, data)
 
+    def _check_payment_data(self, response, expected_form_data):
+        """ DRY helper. """
+        data = json.loads(response.content)
+        self.assertEqual(set(data.keys()), PAYMENT_DATA_KEYS)
+        payment_form_data = data['payment_form_data']
+        for k in expected_form_data:
+            self.assertEqual(payment_form_data[k], expected_form_data[k])
+
     def test_create_order_already_verified(self):
         # Verify the student so we don't need to submit photos
         self._verify_student()
@@ -885,12 +895,14 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
 
         # Verify that the information will be sent to the correct callback URL
         # (configured by test settings)
-        data = json.loads(response.content)
-        self.assertEqual(data['override_custom_receipt_page'], "http://testserver/shoppingcart/postpay_callback/")
-
-        # Verify that the course ID and transaction type are included in "merchant-defined data"
-        self.assertEqual(data['merchant_defined_data1'], unicode(self.course.id))
-        self.assertEqual(data['merchant_defined_data2'], "verified")
+        self._check_payment_data(
+            response,
+            {
+                'override_custom_receipt_page': "http://testserver/shoppingcart/postpay_callback/",
+                'merchant_defined_data1': unicode(self.course.id),
+                'merchant_defined_data2': "verified",
+            }
+        )
 
     def test_create_order_already_verified_prof_ed(self):
         # Verify the student so we don't need to submit photos
@@ -906,9 +918,13 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verify that the course ID and transaction type are included in "merchant-defined data"
-        data = json.loads(response.content)
-        self.assertEqual(data['merchant_defined_data1'], unicode(course.id))
-        self.assertEqual(data['merchant_defined_data2'], "professional")
+        self._check_payment_data(
+            response,
+            {
+                'merchant_defined_data1': unicode(course.id),
+                'merchant_defined_data2': "professional",
+            }
+        )
 
     def test_create_order_for_no_id_professional(self):
 
@@ -922,9 +938,13 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verify that the course ID and transaction type are included in "merchant-defined data"
-        data = json.loads(response.content)
-        self.assertEqual(data['merchant_defined_data1'], unicode(course.id))
-        self.assertEqual(data['merchant_defined_data2'], "no-id-professional")
+        self._check_payment_data(
+            response,
+            {
+                'merchant_defined_data1': unicode(course.id),
+                'merchant_defined_data2': "no-id-professional",
+            }
+        )
 
     def test_create_order_for_multiple_paid_modes(self):
 
@@ -939,9 +959,13 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verify that the course ID and transaction type are included in "merchant-defined data"
-        data = json.loads(response.content)
-        self.assertEqual(data['merchant_defined_data1'], unicode(course.id))
-        self.assertEqual(data['merchant_defined_data2'], "no-id-professional")
+        self._check_payment_data(
+            response,
+            {
+                'merchant_defined_data1': unicode(course.id),
+                'merchant_defined_data2': "no-id-professional",
+            }
+        )
 
     def test_create_order_set_donation_amount(self):
         # Verify the student so we don't need to submit photos
@@ -977,7 +1001,7 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
             course_mode.save()
 
         # Mock the E-Commerce Service response
-        with self.mock_create_order():
+        with self.mock_create_basket():
             self._verify_student()
             params = {'course_id': unicode(self.course.id), 'contribution': 100}
             response = self._post(params)
@@ -985,7 +1009,7 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         # Verify the response is correct.
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/json')
-        self.assertEqual(json.loads(response.content), self.ECOMMERCE_API_SUCCESSFUL_BODY['payment_parameters'])
+        self.assertEqual(json.loads(response.content), self.ECOMMERCE_API_SUCCESSFUL_BODY['payment_data'])
 
         # Verify old code is not called (e.g. no Order object created in LMS)
         self.assertEqual(order_count, Order.objects.count())
@@ -1005,10 +1029,11 @@ class TestCreateOrder(EcommerceApiTestMixin, ModuleStoreTestCase):
         """
         self._add_course_mode_skus()
 
-        with self.mock_create_order(side_effect=ApiError):
+        with self.mock_create_basket(side_effect=ApiError) as mock_create_order:
             self._verify_student()
             params = {'course_id': unicode(self.course.id), 'contribution': 100}
             self.assertRaises(ApiError, self._post, params)
+            self.assertTrue(mock_create_order.called)
 
 
 class TestCreateOrderView(ModuleStoreTestCase):
@@ -1099,7 +1124,7 @@ class TestCreateOrderView(ModuleStoreTestCase):
             photo_id_image=self.IMAGE_DATA
         )
         json_response = json.loads(response.content)
-        self.assertIsNotNone(json_response.get('orderNumber'))
+        self.assertIsNotNone(json_response['payment_form_data'].get('orderNumber'))  # TODO not canonical
 
         # Verify that the order exists and is configured correctly
         order = Order.objects.get(user=self.user)
@@ -1149,9 +1174,9 @@ class TestCreateOrderView(ModuleStoreTestCase):
         if expect_status_code == 200:
             json_response = json.loads(response.content)
             if expect_success:
-                self.assertTrue(json_response.get('success'))
+                self.assertEqual(set(json_response.keys()), PAYMENT_DATA_KEYS)
             else:
-                self.assertFalse(json_response.get('success'))
+                self.assertFalse(json_response['success'])
 
         return response
 

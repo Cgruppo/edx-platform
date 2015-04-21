@@ -33,7 +33,8 @@ var edx = edx || {};
                 hasVisibleReqs = _.some(
                     templateContext.requirements,
                     function( isVisible ) { return isVisible; }
-                );
+                ),
+                html;
 
             // Track a virtual pageview, for easy funnel reconstruction.
             window.analytics.page( 'payment', this.templateName );
@@ -59,23 +60,33 @@ var edx = edx || {};
                 this.setPaymentEnabled( true );
             }
 
+            // create a button for each payment processor
+            var buttonTemplate = _.template(
+                '<a class="next action-primary payment-button" id="<%- name %>" tab-index="0">Pay Using "<%- name %>"</a> '
+            );
+            _.each(templateContext.processors, function(processorName) {
+                html = buttonTemplate({name: processorName});
+                $( 'div.payment-buttons' ).append( html );
+            });
+
             // Handle payment submission
-            $( '#pay_button' ).on( 'click', _.bind( this.createOrder, this ) );
+            $( '.payment-button' ).on( 'click', _.bind( this.createOrder, this ) );
         },
 
         setPaymentEnabled: function( isEnabled ) {
             if ( _.isUndefined( isEnabled ) ) {
                 isEnabled = true;
             }
-            $( '#pay_button' )
+            $( '.payment-button' )
                 .toggleClass( 'is-disabled', !isEnabled )
                 .prop( 'disabled', !isEnabled )
                 .attr('aria-disabled', !isEnabled);
         },
 
-        createOrder: function() {
+        createOrder: function(event) {
             var paymentAmount = this.getPaymentAmount(),
                 postData = {
+                    'processor': event.target.id,
                     'contribution': paymentAmount,
                     'course_id': this.stepData.courseKey,
                 };
@@ -98,7 +109,7 @@ var edx = edx || {};
 
         },
 
-        handleCreateOrderResponse: function( paymentParams ) {
+        handleCreateOrderResponse: function( paymentData ) {
             // At this point, the order has been created on the server,
             // and we've received signed payment parameters.
             // We need to dynamically construct a form using
@@ -109,10 +120,10 @@ var edx = edx || {};
 
             $( 'input', form ).remove();
 
-            form.attr( 'action', this.stepData.purchaseEndpoint );
+            form.attr( 'action', paymentData.payment_page_url );
             form.attr( 'method', 'POST' );
 
-            _.each( paymentParams, function( value, key ) {
+            _.each( paymentData.payment_form_data, function( value, key ) {
                 $('<input>').attr({
                     type: 'hidden',
                     name: key,
