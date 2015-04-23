@@ -69,6 +69,7 @@ PYLINT_THRESHOLD=5500
 # Note that you will still need to pass a value for 'TEST_SUITE'
 # or else no tests will be executed.
 SHARD=${SHARD:="all"}
+UNIQUE_TEST_REPORT_DIR=true
 
 case "$TEST_SUITE" in
 
