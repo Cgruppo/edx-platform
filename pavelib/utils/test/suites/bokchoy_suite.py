@@ -39,7 +39,7 @@ class BokChoyTestSuite(TestSuite):
         # The main purpose of this is to ensure that the reports can be 'slurped'
         # in the main jenkins flow job without overwriting the reports from other
         # build steps. For local development/testing, this shouldn't be needed.
-        if os.environ.get("UNIQUE_TEST_REPORT_DIR", False):
+        if int(os.environ.get("UNIQUE_TEST_REPORT_DIR", 0)):
             self.report_dir = self.report_dir / uuid.uuid4().hex
             self.log_dir = self.log_dir / uuid.uuid4().hex
 

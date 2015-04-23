@@ -98,12 +98,12 @@ END
     "unit")
         case "$SHARD" in
             "lms")
-                UNIQUE_TEST_REPORT_DIR=true paver test_system -s lms --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_system -s lms --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
                 ;;
             "cms-js-commonlib")
-                UNIQUE_TEST_REPORT_DIR=true paver test_system -s cms --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_system -s cms --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
                 paver test_js --coverage --skip_clean || { EXIT=1; }
-                UNIQUE_TEST_REPORT_DIR=true paver test_lib --skip_clean --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_lib --skip_clean --extra_args="--with-flaky" --cov_args="-p" || { EXIT=1; }
                 ;;
             *)
                 paver test --extra_args="--with-flaky"
@@ -165,19 +165,19 @@ END
                 ;;
 
             "1")
-                UNIQUE_TEST_REPORT_DIR=true paver test_bokchoy --extra_args="-a shard_1 --with-flaky" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_bokchoy --extra_args="-a shard_1 --with-flaky" || { EXIT=1; }
                 ;;
 
             "2")
-                UNIQUE_TEST_REPORT_DIR=true paver test_bokchoy --extra_args="-a 'shard_2' --with-flaky" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_bokchoy --extra_args="-a 'shard_2' --with-flaky" || { EXIT=1; }
                 ;;
 
             "3")
-                UNIQUE_TEST_REPORT_DIR=true paver test_bokchoy --extra_args="-a 'shard_3' --with-flaky" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_bokchoy --extra_args="-a 'shard_3' --with-flaky" || { EXIT=1; }
                 ;;
 
             "4")
-                UNIQUE_TEST_REPORT_DIR=true paver test_bokchoy --extra_args="-a shard_1=False,shard_2=False,shard_3=False --with-flaky" || { EXIT=1; }
+                UNIQUE_TEST_REPORT_DIR=1 paver test_bokchoy --extra_args="-a shard_1=False,shard_2=False,shard_3=False --with-flaky" || { EXIT=1; }
                 ;;
 
             # Default case because if we later define another bok-choy shard on Jenkins
