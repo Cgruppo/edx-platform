@@ -2,6 +2,7 @@
 Helper methods for push notifications from Studio.
 """
 
+from uuid import uuid4
 from django.conf import settings
 from logging import exception as log_exception
 
@@ -48,13 +49,16 @@ def send_push_course_update(course_key_string, course_subscription_id, course_di
             )
             Push.alert(
                 data={
-                    "course-id": course_key_string,
                     "action": "course.announcement",
-                    "action-loc-key": "VIEW_BUTTON",
-                    "loc-key": "COURSE_ANNOUNCEMENT_NOTIFICATION_BODY",
-                    "loc-args": [course_display_name],
-                    "title-loc-key": "COURSE_ANNOUNCEMENT_NOTIFICATION_TITLE",
-                    "title-loc-args": [],
+                    "notification-id": unicode(uuid4()),
+
+                    "course-id": course_key_string,
+                    "course-name": course_display_name,
+
+                    "aps": {  # for iOS only
+                        "alert": "",
+                        "content-available": 1,
+                    }
                 },
                 channels=[course_subscription_id],
             )
