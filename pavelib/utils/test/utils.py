@@ -29,7 +29,9 @@ def clean_dir(directory):
     """
     # We delete the files but preserve the directory structure
     # so that coverage.py has a place to put the reports.
-    sh('find {dir} -type f -delete'.format(dir=directory))
+    sh('find {dir} -type f -delete & find {dir} -type d -delete'.format(
+        dir=directory)
+    )
 
 
 @task
@@ -44,11 +46,10 @@ def clean_reports_dir(options):
         print('--skip_clean is set, skipping...')
         return
 
-    # We delete the files but preserve the directory structure
-    # so that coverage.py has a place to put the reports.
+    # We delete the files and the directory structure
+    # These directories will be added back when the tests are run.
     reports_dir = Env.REPORT_DIR.makedirs_p()
     clean_dir(reports_dir)
-
 
 @task
 def clean_mongo():
